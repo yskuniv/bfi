@@ -63,23 +63,20 @@ driveBFWorld world@(BFWorld cmds cptr mem) = if cptr >= length cmds then
                            return $ Just world'_base
       | cmd == InpDat = do ch <- getChar
                            return $ Just $ world'_base { memory = setBFMemoryDat mem $ fromIntegral $ ord ch }
-      | cmd == JmpFwd = if getBFMemoryDat mem == (0 :: Word8) then
-                          return $ Just world'_base
-                        else
-                          do world' <- runSubWorld $ world { commands = drop (succ cptr) $ take (pred cptr') cmds
-                                                           , commandPointer = 0 }
-                             return $ Just world'
+      | cmd == JmpFwd = do (BFWorld _ _ mem') <- runSubWorld $ world { commands = drop (succ cptr) $ take (pred cptr') cmds
+                                                                     , commandPointer = 0 }
+                           return $ Just $ world'_base { memory = mem' }
       where
         cmd = (cmds !! cptr)
         cptr' = succ $ case cmd of JmpFwd -> searchMatchingParen cmds cptr
                                    _      -> cptr
         world'_base = world { commandPointer = cptr' }
 
-        runSubWorld sw = do (BFWorld _ _ mem') <- run sw
-                            if getBFMemoryDat mem' == (0 :: Word8) then
-                              return $ world'_base { memory = mem' }
-                            else
-                              runSubWorld $ sw { memory = mem' }
+        runSubWorld sw@(BFWorld _ _ smem) = if getBFMemoryDat smem == (0 :: Word8) then
+                                              return sw
+                                            else
+                                              do (BFWorld _ _ smem') <- run sw
+                                                 runSubWorld $ sw { memory = smem' }
 
 run :: BFWorld -> IO BFWorld
 run world = do mb_world' <- driveBFWorld world
