@@ -1,5 +1,6 @@
 import Data.Binary
 import Data.Maybe
+import Data.Char
 
 charToBFCommandTable = [('>', IncPtr),
                         ('<', DecPtr),
@@ -34,7 +35,7 @@ data BFWorld = BFWorld { commands :: [BFCommand], commandPointer :: Int, memory 
 instance Show BFWorld where
   show (BFWorld cmds cptr (BFMemory cells ptr)) = "cmds = " ++ show cmds ++ ", cptr = " ++ show cptr ++ ", mcells = " ++ show cells ++ ", mptr = " ++ show ptr
 
-initialBFWorld prog = BFWorld (stringToBFCommands prog) 0 $ BFMemory (replicate 256 (0 :: Word8)) (0 :: Word8)
+createInitialBFWorld prog = BFWorld (stringToBFCommands prog) 0 $ BFMemory (replicate 256 (0 :: Word8)) (0 :: Word8)
 
 searchMatchingParen :: [BFCommand] -> Int -> Int
 searchMatchingParen cmds cptr = head [x | (Just x, Nothing) <- zip l (tail l)]
@@ -46,38 +47,45 @@ searchMatchingParen cmds cptr = head [x | (Just x, Nothing) <- zip l (tail l)]
                             JmpBck      -> Nothing
                             _           -> return $ p + 1) (return $ succ cptr)
 
-driveBFWorld :: BFWorld -> Maybe BFWorld
+driveBFWorld :: BFWorld -> IO (Maybe BFWorld)
 driveBFWorld world@(BFWorld cmds cptr mem) = if cptr >= length cmds then
-                                               Nothing
+                                               return Nothing
                                              else
-                                               return world'
+                                               io_mb_world'
   where
-    world' | cmd == IncPtr || cmd == DecPtr || cmd == IncDat || cmd == DecDat =
-      world { commandPointer = (succ cptr), memory = (case cmd of IncPtr -> incBFMemoryPtr
-                                                                  DecPtr -> decBFMemoryPtr
-                                                                  IncDat -> incBFMemoryDat
-                                                                  DecDat -> decBFMemoryDat) mem }
-           | cmd == JmpFwd = if getBFMemoryDat mem == (0 :: Word8) then
-                               world { commandPointer = (succ p) }
-                             else
-                               runSubWorld $ world { commands = (drop (succ cptr) $ take p cmds), commandPointer = 0 }
+    io_mb_world' | cmd == IncPtr || cmd == DecPtr || cmd == IncDat || cmd == DecDat =
+      return $ Just $ world { commandPointer = succ cptr
+                            , memory = (case cmd of IncPtr -> incBFMemoryPtr
+                                                    DecPtr -> decBFMemoryPtr
+                                                    IncDat -> incBFMemoryDat
+                                                    DecDat -> decBFMemoryDat) mem }
+                 | cmd == OutDat = do putChar $ chr $ fromIntegral $ getBFMemoryDat mem
+                                      return $ Just $ world { commandPointer = succ cptr }
+                 | cmd == InpDat = do ch <- getChar
+                                      return $ Just $ world { commandPointer = succ cptr
+                                                            , memory = setBFMemoryDat mem $ fromIntegral $ ord ch }
+                 | cmd == JmpFwd = if getBFMemoryDat mem == (0 :: Word8) then
+                                     return $ Just $ world { commandPointer = succ p }
+                                   else
+                                     do world' <- runSubWorld $ world { commands = drop (succ cptr) $ take p cmds
+                                                                      , commandPointer = 0 }
+                                        return $ Just world'
       where
         cmd = (cmds !! cptr)
         p = searchMatchingParen cmds cptr
-        runSubWorld sw = if getBFMemoryDat mem' == (0 :: Word8) then
-                           world { commandPointer = (succ p), memory = mem' }
-                         else
-                           runSubWorld $ sw { memory = mem' }
-          where
-            (BFWorld _ _ mem') = run sw
+        runSubWorld sw = do (BFWorld _ _ mem') <- run sw
+                            if getBFMemoryDat mem' == (0 :: Word8) then
+                              return world { commandPointer = (succ p),
+                                             memory = mem' }
+                            else
+                              runSubWorld $ sw { memory = mem' }
 
-run :: BFWorld -> BFWorld
-run world = if isNothing world' then
-              world
-            else
-              run $ fromJust world'
-  where
-    world' = driveBFWorld world
+run :: BFWorld -> IO BFWorld
+run world = do mb_world' <- driveBFWorld world
+               case mb_world' of
+                 Nothing        -> return world
+                 (Just world')  -> run world'
 
-bfi :: String -> BFWorld
-bfi prog = run $ initialBFWorld prog
+bfi :: String -> IO ()
+bfi prog = do run $ createInitialBFWorld prog
+              return ()
