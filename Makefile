@@ -1,5 +1,5 @@
 bfi: bfi.hs
-	ghc $< -o $@
+	ghc -Wall $< -o $@
 
 clean:
 	rm -f *.hi *.o *~ bfi
