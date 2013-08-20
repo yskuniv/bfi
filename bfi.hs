@@ -1,3 +1,4 @@
+import System.Environment
 import Data.Binary
 import Data.Maybe
 import Data.Char
@@ -63,7 +64,7 @@ driveBFWorld world@(BFWorld cmds cptr mem) = if cptr >= length cmds then
                              return world { commandPointer = cptr'
                                           , memory = smem }
                            else
-                             do (BFWorld _ _ smem') <- run $ initialSubWorld { memory = smem }
+                             do (BFWorld _ _ smem') <- runBFWorld $ initialSubWorld { memory = smem }
                                 runSubWorld smem'
           where
             cptr' = succ $ searchMatchingParen cptr
@@ -81,13 +82,17 @@ driveBFWorld world@(BFWorld cmds cptr mem) = if cptr >= length cmds then
             initialSubWorld = world { commands = drop (succ cptr) $ take (pred cptr') cmds
                                     , commandPointer = 0 }
 
-run :: BFWorld -> IO BFWorld
-run world = case driveBFWorld world of Nothing          -> return world
-                                       (Just io_world') -> io_world' >>= run
+runBFWorld :: BFWorld -> IO BFWorld
+runBFWorld world = case driveBFWorld world of Nothing          -> return world
+                                              (Just io_world') -> io_world' >>= runBFWorld
 
 bfi :: String -> IO ()
-bfi prog = do run $ createInitialBFWorld prog
+bfi prog = do runBFWorld $ createInitialBFWorld prog
               return ()
+
+main = do args <- getArgs
+          prog <- readFile $ head args
+          bfi prog
 
 -- for debug
 
