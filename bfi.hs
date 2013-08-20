@@ -69,15 +69,11 @@ driveBFWorld world@(BFWorld cmds cptr mem) = if cptr >= length cmds then
           where
             cptr' = succ $ searchMatchingParen cptr
               where
-                searchMatchingParen :: Int -> Int
-                searchMatchingParen cptr = head [x | (Just x, Nothing) <- zip l (tail l)]
+                searchMatchingParen p = helper (succ p)
                   where
-                    l :: [Maybe Int]
-                    l = iterate (\x -> do p <- x
-                                          case cmds !! p of
-                                            JmpFwd      -> return $ searchMatchingParen $ succ p
-                                            JmpBck      -> Nothing
-                                            _           -> return $ p + 1) (return $ succ cptr)
+                    helper p = case cmds !! p of JmpFwd -> searchMatchingParen p
+                                                 JmpBck -> p
+                                                 _      -> helper (succ p)
 
             initialSubWorld = world { commands = drop (succ cptr) $ take (pred cptr') cmds
                                     , commandPointer = 0 }
