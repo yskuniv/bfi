@@ -2,6 +2,10 @@ import Data.Binary
 import Data.Maybe
 import Data.Char
 
+-- BFCommand
+
+data BFCommand = IncPtr | DecPtr | IncDat | DecDat | OutDat | InpDat | JmpFwd | JmpBck deriving Eq
+
 charToBFCommandTable = [('>', IncPtr),
                         ('<', DecPtr),
                         ('+', IncDat),
@@ -10,11 +14,10 @@ charToBFCommandTable = [('>', IncPtr),
                         (',', InpDat),
                         ('[', JmpFwd),
                         (']', JmpBck)]
-
-data BFCommand = IncPtr | DecPtr | IncDat | DecDat | OutDat | InpDat | JmpFwd | JmpBck deriving Eq
-
 charToBFCommand ch = fromJust $ lookup ch charToBFCommandTable
 stringToBFCommands = map charToBFCommand
+
+-- BFMemory
 
 data BFMemory = BFMemory { cells :: [Word8], ptr :: Word8 }
 
@@ -26,19 +29,13 @@ decBFMemoryDat m = setBFMemoryDat m $ pred $ getBFMemoryDat m
 setBFMemoryDat (BFMemory cells ptr) value = BFMemory (take (fromIntegral ptr) cells ++ [value] ++ drop (fromIntegral (succ ptr)) cells) ptr
 getBFMemoryDat (BFMemory cells ptr) = cells !! (fromIntegral ptr)
 
+-- BFWorld
+
 data BFWorld = BFWorld { commands :: [BFCommand], commandPointer :: Int, memory :: BFMemory }
 
 createInitialBFWorld prog = BFWorld (stringToBFCommands prog) 0 initialBFMemory
 
-searchMatchingParen :: [BFCommand] -> Int -> Int
-searchMatchingParen cmds cptr = head [x | (Just x, Nothing) <- zip l (tail l)]
-  where
-    l :: [Maybe Int]
-    l = iterate (\x -> do p <- x
-                          case cmds !! p of
-                            JmpFwd      -> return $ searchMatchingParen cmds p + 1
-                            JmpBck      -> Nothing
-                            _           -> return $ p + 1) (return $ succ cptr)
+-- Main
 
 driveBFWorld :: BFWorld -> Maybe (IO BFWorld)
 driveBFWorld world@(BFWorld cmds cptr mem) = if cptr >= length cmds then
@@ -69,7 +66,18 @@ driveBFWorld world@(BFWorld cmds cptr mem) = if cptr >= length cmds then
                              do (BFWorld _ _ smem') <- run $ initialSubWorld { memory = smem }
                                 runSubWorld smem'
           where
-            cptr' = succ $ searchMatchingParen cmds cptr
+            cptr' = succ $ searchMatchingParen cptr
+              where
+                searchMatchingParen :: Int -> Int
+                searchMatchingParen cptr = head [x | (Just x, Nothing) <- zip l (tail l)]
+                  where
+                    l :: [Maybe Int]
+                    l = iterate (\x -> do p <- x
+                                          case cmds !! p of
+                                            JmpFwd      -> return $ searchMatchingParen $ succ p
+                                            JmpBck      -> Nothing
+                                            _           -> return $ p + 1) (return $ succ cptr)
+
             initialSubWorld = world { commands = drop (succ cptr) $ take (pred cptr') cmds
                                     , commandPointer = 0 }
 
@@ -80,6 +88,8 @@ run world = case driveBFWorld world of Nothing          -> return world
 bfi :: String -> IO ()
 bfi prog = do run $ createInitialBFWorld prog
               return ()
+
+-- for debug
 
 instance Show BFCommand where
   show x = [fromJust $ lookup x $ map (\(x, y) -> (y, x)) charToBFCommandTable]
