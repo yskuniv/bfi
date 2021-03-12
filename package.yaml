@@ -1,14 +1,12 @@
 name:                haskell-bfi
 version:             0.1.0.0
-github:              "githubuser/haskell-bfi"
+github:              "yskuniv/haskell-bfi"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2021 Author name here"
+author:              "ysk"
+copyright:           "2021 ysk"
 
 extra-source-files:
 - README.md
-- ChangeLog.md
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
