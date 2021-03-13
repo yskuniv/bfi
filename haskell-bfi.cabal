@@ -7,34 +7,40 @@ cabal-version: 1.12
 name:           haskell-bfi
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/haskell-bfi#readme>
-homepage:       https://github.com/githubuser/haskell-bfi#readme
-bug-reports:    https://github.com/githubuser/haskell-bfi/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2021 Author name here
+homepage:       https://github.com/yskuniv/haskell-bfi#readme
+bug-reports:    https://github.com/yskuniv/haskell-bfi/issues
+author:         ysk
+maintainer:     ysk
+copyright:      2021 ysk
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
-    ChangeLog.md
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/haskell-bfi
+  location: https://github.com/yskuniv/haskell-bfi
 
 library
   exposed-modules:
-      Lib
+      BFI.BFMemory
+      BFI.CommandRunner
+      BFI.Data.Command
+      BFI.ProgramLoader
+      BFI.Utils.DataArray
   other-modules:
       Paths_haskell_bfi
   hs-source-dirs:
       src
   build-depends:
       base >=4.7 && <5
+    , binary
+    , mtl
+    , optparse-applicative
   default-language: Haskell2010
 
-executable haskell-bfi-exe
+executable haskell-bfi
   main-is: Main.hs
   other-modules:
       Paths_haskell_bfi
@@ -43,7 +49,10 @@ executable haskell-bfi-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , binary
     , haskell-bfi
+    , mtl
+    , optparse-applicative
   default-language: Haskell2010
 
 test-suite haskell-bfi-test
@@ -56,5 +65,8 @@ test-suite haskell-bfi-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , binary
     , haskell-bfi
+    , mtl
+    , optparse-applicative
   default-language: Haskell2010
